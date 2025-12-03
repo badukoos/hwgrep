@@ -15,6 +15,7 @@ MAX_COMPUTERS=5
 VERBOSE=0
 DRY_RUN=0
 DEBUG_HTML=0
+AVAILABLE_LOGS=0
 
 usage() {
   cat <<EOF
@@ -23,21 +24,21 @@ Usage:
 
 Filters:
   --type TYPE           Computer type e.g notebook, desktop, server, etc
-  --vendor VENDOR       Vendor name, e.g. Lenovo, Dell
+  --vendor VENDOR       Vendor name, e.g. Lenovo
   --model-like STR      Model substring, e.g. "ThinkPad E14 Gen 7"
-  --year YEAR           Mfg. year filter e.g. --year 2025 --year all
+  --year YEAR           Mfg. year filter e.g. --year 2025 or --year all
                         Default: current year from "date +%Y"
 
-  --filter-url URL      Full ?view=computers URL. If this is set,
+  --filter-url URL      Full ?view=computers or ?probe= URL. If this is set,
                         --type/--vendor/--model-like/--year are ignored.
 
 Logs:
-  --log NAME            Log to fetch default: dmesg
+  --log NAME            Log to fetch (default: dmesg)
   --grep REGEX          Case-insensitive regex to filter log lines
-  --sleep SECONDS       Pause between probe log fetches default: 1
-  --max-probes N        Stop after N probes 0 = unlimited
-  --max-computers N     Stop after N computers 0 = unlimited
-                        Default: 5
+  --sleep SECONDS       Pause between probe log fetches (default: 1)
+  --max-probes N        Stop after N probes (0 = unlimited)
+  --max-computers N     Stop after N computers (0 = unlimited, default: 5)
+  --available-logs      List available logs
 
 Other:
   --dry-run             Only list computer IDs and probe IDs
@@ -64,11 +65,11 @@ fetch_page() {
   logv "Fetching URL: $url"
   if [ "$DEBUG_HTML" -eq 1 ] && [ -n "$dbg" ]; then
     curl -sL --compressed \
-      -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36' \
+      -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.7444.175 Safari/537.36' \
       "$url" | tee "$dbg"
   else
     curl -sL --compressed \
-      -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36' \
+      -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.7444.175 Safari/537.36' \
       "$url"
   fi
 }
@@ -119,6 +120,10 @@ while [ $# -gt 0 ]; do
     --max-computers)
       MAX_COMPUTERS="${2:-}"
       shift 2
+      ;;
+    --available-logs)
+      AVAILABLE_LOGS=1
+      shift
       ;;
     --dry-run)
       DRY_RUN=1
@@ -187,7 +192,7 @@ COMPUTER_IDS=$(
 )
 
 if [ -z "$COMPUTER_IDS" ]; then
-  echo "No computer IDs found in computers page" >&2
+  echo "No computer IDs found" >&2
   if [ "$DEBUG_HTML" -eq 1 ] && [ -n "$computers_html_dbg" ]; then
     echo "Saved HTML to $computers_html_dbg for inspection" >&2
   fi
@@ -249,15 +254,78 @@ echo "$COMPUTER_IDS" | while read -r COMPUTER_ID; do
       continue
     fi
 
+    if [ "$AVAILABLE_LOGS" -eq 1 ]; then
+      logs_url="${HWGREP_BASE_URL}/?probe=${PROBE_ID}"
+      logv "Fetching available logs list from: ${logs_url}"
+
+      echo "  Available logs for probe ${PROBE_ID}:"
+
+      fetch_page "$logs_url" "" \
+        | awk '
+            /<a name='\''Logs'\''>/ {inlogs=1; next}
+            !inlogs {next}
+
+            /<span class='\''category'\''>/ {
+              if (match($0, /<span class='\''category'\''>([^<]+)<\/span>/, m)) {
+                category = m[1]
+                cat_order[++cat_count] = category
+              }
+              next
+            }
+
+            /class='\''pointer'\''/ && /log=/ {
+              logname=""
+              label=""
+
+              if (match($0, /log=([^'\''&]+)['\''&]/, m)) {
+                logname = m[1]
+              }
+              if (match($0, />[^<]+<\/a>/, m2)) {
+                label = m2[0]
+                sub(/^>/, "", label)
+                sub(/<\/a>$/, "", label)
+              } else {
+                label = logname
+              }
+
+              if (category != "" && logname != "") {
+                logs[category][++count[category]] = label
+              }
+              next
+            }
+
+            END {
+              for (i = 1; i <= cat_count; i++) {
+                c = cat_order[i]
+                print "[" c "]"
+                for (j = 1; j <= count[c]; j++) {
+                  printf("    %s\n", logs[c][j])
+                }
+                print ""
+              }
+            }
+          '
+
+      echo
+      continue
+    fi
+
     log_url="${HWGREP_BASE_URL}/?log=${LOG_NAME}&probe=${PROBE_ID}"
     logv "Fetching log: ${log_url}"
 
     if [ -n "$GREP_PATTERN" ]; then
       fetch_page "$log_url" "" \
+        | sed '/<script/,/<\/script>/d; /<style/,/<\/style>/d' \
+        | sed -E 's/<[Bb][Rr][[:space:]]*\/?>/\n/g' \
         | sed 's/<[^>]*>//g' \
+        | sed '/^[[:space:]]*$/d' \
         | grep -Ei "$GREP_PATTERN" || echo "  no matches"
     else
-      fetch_page "$log_url" ""
+      fetch_page "$log_url" "" \
+        | sed '/<script/,/<\/script>/d; /<style/,/<\/style>/d' \
+        | sed -E 's/<[Bb][Rr][[:space:]]*\/?>/\n/g' \
+        | sed 's/<[^>]*>//g' \
+        | sed '/^[[:space:]]*$/d'
     fi
 
     echo
