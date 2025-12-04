@@ -36,18 +36,17 @@ Filters:
   --type TYPE           Computer type e.g notebook, desktop, server, etc
   --vendor VENDOR       Vendor name, e.g. Lenovo
   --model-like STR      Model substring, e.g. "ThinkPad E14 Gen 7"
-  --year YEAR           Mfg. year filter e.g. --year 2025 or --year all
-                        Default: current year from "date +%Y"
+  --year YEAR           Mfg. year filter e.g. --year 2025, default: all
 
   --filter-url URL      Full ?view=computers, ?computer= or ?probe= URL. If this
-                        is set, --type/--vendor/--model-like/--year are ignored.
+                        is set, --type/--vendor/--model-like/--year are ignored
 
 Logs:
   --log NAME            Log to fetch
-  --grep REGEX          Case-insensitive regex to filter log lines
-  --sleep SECONDS       Pause between probe log fetches (default: 1)
-  --max-probes N        Stop after N probes (0 = unlimited)
-  --max-computers N     Stop after N computers (0 = unlimited, default: 5)
+  --grep REGEX          Regex to filter log lines
+  --sleep SECONDS       Pause between probe log fetches, default: 1
+  --max-probes N        Stop after N probes, 0 = unlimited
+  --max-computers N     Stop after N computers, 0 = unlimited, default: 5
   --available-logs      List available logs
 
 Other:
@@ -238,7 +237,7 @@ if [ -z "$FILTER_URL" ]; then
   fi
 
   if [ -z "$YEAR" ]; then
-    YEAR="$(date +%Y)"
+    YEAR="all"
   fi
 
   enc_type=$(encode_spaces_as_plus "$TYPE")
