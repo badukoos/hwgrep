@@ -55,7 +55,10 @@ Other:
   --host-info           Show Host summary
   --list-devices        Show Devices table
   --verbose             Extra debug output to stderr
-  -h, --help            Show this help
+
+  --offline             Use offline cache
+  --no-cache            Get data from network
+  --refresh-cache       Re-fetch and overwrite cache
 EOF
 }
 
@@ -129,6 +132,18 @@ while [ $# -gt 0 ]; do
       ;;
     --verbose)
       VERBOSE=1
+      shift
+      ;;
+    --offline)
+      HW_CACHE_OFFLINE=1
+      shift
+      ;;
+    --no-cache)
+      HW_CACHE_DISABLE=1
+      shift
+      ;;
+    --refresh-cache)
+      HW_CACHE_REFRESH=1
       shift
       ;;
     -h|--help)
@@ -341,6 +356,10 @@ echo "$COMPUTER_IDS" | while read -r COMPUTER_ID; do
     if [ "$HOST_INFO" -eq 1 ]; then
       HWGREP_BASE_URL="$HWGREP_BASE_URL" \
       VERBOSE="$VERBOSE" \
+      HW_CACHE_DIR="$HW_CACHE_DIR" \
+      HW_CACHE_DISABLE="${HW_CACHE_DISABLE:-0}" \
+      HW_CACHE_REFRESH="${HW_CACHE_REFRESH:-0}" \
+      HW_CACHE_OFFLINE="${HW_CACHE_OFFLINE:-0}" \
         "$HW_HOSTINFO_SCRIPT" \
           --probe "$PROBE_ID"
     fi
@@ -348,6 +367,10 @@ echo "$COMPUTER_IDS" | while read -r COMPUTER_ID; do
     if [ "$LIST_DEVICES" -eq 1 ]; then
       HWGREP_BASE_URL="$HWGREP_BASE_URL" \
       VERBOSE="$VERBOSE" \
+      HW_CACHE_DIR="$HW_CACHE_DIR" \
+      HW_CACHE_DISABLE="${HW_CACHE_DISABLE:-0}" \
+      HW_CACHE_REFRESH="${HW_CACHE_REFRESH:-0}" \
+      HW_CACHE_OFFLINE="${HW_CACHE_OFFLINE:-0}" \
         "$HW_DEVICES_SCRIPT" \
           --probe "$PROBE_ID"
     fi
@@ -355,6 +378,10 @@ echo "$COMPUTER_IDS" | while read -r COMPUTER_ID; do
     if [ "$AVAILABLE_LOGS" -eq 1 ]; then
       HWGREP_BASE_URL="$HWGREP_BASE_URL" \
       VERBOSE="$VERBOSE" \
+      HW_CACHE_DIR="$HW_CACHE_DIR" \
+      HW_CACHE_DISABLE="${HW_CACHE_DISABLE:-0}" \
+      HW_CACHE_REFRESH="${HW_CACHE_REFRESH:-0}" \
+      HW_CACHE_OFFLINE="${HW_CACHE_OFFLINE:-0}" \
         "$HW_LOGS_SCRIPT" \
           --probe "$PROBE_ID"
       continue
