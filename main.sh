@@ -43,7 +43,7 @@ Filters:
                         is set, --type/--vendor/--model-like/--year are ignored.
 
 Logs:
-  --log NAME            Log to fetch (default: dmesg unless host/devices-only)
+  --log NAME            Log to fetch
   --grep REGEX          Case-insensitive regex to filter log lines
   --sleep SECONDS       Pause between probe log fetches (default: 1)
   --max-probes N        Stop after N probes (0 = unlimited)
@@ -248,14 +248,24 @@ if [ "$LIST_ONLY" -eq 1 ]; then
   echo "List-only mode: will list computer URLs and probe IDs only"
 fi
 
-computers_html_dbg=""
+used_listing=0
 
-COMPUTER_IDS=$(
-  hw_fetch_page "$FILTER_URL" "$computers_html_dbg" \
-    | sed -n 's/.*computer=\([0-9A-Fa-f]\{8,16\}\).*/\1/p' \
-    | tr 'A-F' 'a-f' \
-    | sort -u
-)
+if printf '%s\n' "$FILTER_URL" | grep -q 'computer='; then
+  COMPUTER_IDS="$(
+    printf '%s\n' "$FILTER_URL" \
+      | sed -n 's/.*computer=\([0-9A-Fa-f]\{8,16\}\).*/\1/p' \
+      | tr 'A-F' 'a-f' \
+      | head -n 1
+  )"
+else
+  used_listing=1
+  COMPUTER_IDS=$(
+    hw_fetch_page "$FILTER_URL" \
+      | sed -n 's/.*computer=\([0-9A-Fa-f]\{8,16\}\).*/\1/p' \
+      | tr 'A-F' 'a-f' \
+      | sort -u
+  )
+fi
 
 if [ -z "$COMPUTER_IDS" ]; then
   echo "No computer IDs found" >&2
@@ -266,7 +276,7 @@ if [ "$MAX_COMPUTERS" -gt 0 ]; then
   COMPUTER_IDS=$(printf '%s\n' "$COMPUTER_IDS" | head -n "$MAX_COMPUTERS")
 fi
 
-if [ "$LIST_ONLY" -eq 0 ]; then
+if [ "$LIST_ONLY" -eq 0 ] && [ "$used_listing" -eq 1 ]; then
   echo "Found computers, showing up to $MAX_COMPUTERS:"
   echo "$COMPUTER_IDS" | sed 's/^/  computer=/'
   echo
@@ -282,7 +292,7 @@ echo "$COMPUTER_IDS" | while read -r COMPUTER_ID; do
   comp_html_dbg=""
 
   PROBE_IDS=$(
-    hw_fetch_page "$comp_url" "$comp_html_dbg" \
+    hw_fetch_page "$comp_url" \
       | sed -n 's/.*probe=\([0-9A-Fa-f]\{8,16\}\).*/\1/p' \
       | tr 'A-F' 'a-f' \
       | sort -u
@@ -290,7 +300,6 @@ echo "$COMPUTER_IDS" | while read -r COMPUTER_ID; do
 
   if [ -z "$PROBE_IDS" ]; then
     if [ "$LIST_ONLY" -eq 0 ]; then
-      echo "Computer ID: ${COMPUTER_ID}"
       echo "URL:        ${comp_url}"
       echo "  No probes found for this computer"
       echo
@@ -306,7 +315,6 @@ echo "$COMPUTER_IDS" | while read -r COMPUTER_ID; do
     continue
   fi
 
-  echo "Computer ID: ${COMPUTER_ID}"
   echo "URL:        ${comp_url}"
   echo "  Probes:"
   echo "$PROBE_IDS" | sed 's/^/    /'
@@ -321,7 +329,9 @@ echo "$COMPUTER_IDS" | while read -r COMPUTER_ID; do
       exit 0
     fi
 
-    echo "Probe: ${PROBE_ID}"
+    if [ "$SKIP_LOGS" -eq 1 ] || [ "$HOST_INFO" -eq 1 ] || [ "$LIST_DEVICES" -eq 1 ]; then
+      echo "Probe: ${PROBE_ID}"
+    fi
 
     if [ "$SKIP_LOGS" -eq 1 ] && [ "$HOST_INFO" -eq 0 ] && [ "$LIST_DEVICES" -eq 0 ]; then
       echo
