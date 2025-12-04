@@ -20,10 +20,9 @@ SLEEP_SEC=1
 MAX_PROBES=0
 MAX_COMPUTERS=5
 VERBOSE=0
-DRY_RUN=0
+LIST_ONLY=0
 HOST_INFO=0
 LIST_DEVICES=0
-DEBUG_HTML=0
 AVAILABLE_LOGS=0
 LOG_EXPLICIT=0
 SKIP_LOGS=0
@@ -52,11 +51,10 @@ Logs:
   --available-logs      List available logs
 
 Other:
-  --dry-run             Only list computer IDs and probe IDs
+  --list-only           Only list computer URLs and probe IDs
   --host-info           Show Host summary
   --list-devices        Show Devices table
   --verbose             Extra debug output to stderr
-  --debug-html          Save HTML to /tmp/hwgrep.*.html for inspection
   -h, --help            Show this help
 EOF
 }
@@ -125,16 +123,12 @@ while [ $# -gt 0 ]; do
       LIST_DEVICES=1
       shift
       ;;
-    --dry-run)
-      DRY_RUN=1
+    --list-only)
+      LIST_ONLY=1
       shift
       ;;
     --verbose)
       VERBOSE=1
-      shift
-      ;;
-    --debug-html)
-      DEBUG_HTML=1
       shift
       ;;
     -h|--help)
@@ -172,16 +166,16 @@ if [ -n "$FILTER_URL" ] && printf '%s\n' "$FILTER_URL" | grep -q 'probe='; then
     exit 1
   fi
 
-  echo "Probe: ${PROBE_ID}"
-  echo "URL:   ${HWGREP_BASE_URL}/?probe=${PROBE_ID}"
-
-  if [ "$DRY_RUN" -eq 1 ]; then
+  if [ "$LIST_ONLY" -eq 1 ]; then
+    echo "URL:   ${HWGREP_BASE_URL}/?probe=${PROBE_ID}"
     exit 0
   fi
 
+  echo "Probe: ${PROBE_ID}"
+  echo "URL:   ${HWGREP_BASE_URL}/?probe=${PROBE_ID}"
+
   if [ "$HOST_INFO" -eq 1 ]; then
     HWGREP_BASE_URL="$HWGREP_BASE_URL" \
-    DEBUG_HTML="$DEBUG_HTML" \
     VERBOSE="$VERBOSE" \
       "$HW_HOSTINFO_SCRIPT" \
         --probe "$PROBE_ID"
@@ -189,16 +183,13 @@ if [ -n "$FILTER_URL" ] && printf '%s\n' "$FILTER_URL" | grep -q 'probe='; then
 
   if [ "$LIST_DEVICES" -eq 1 ]; then
     HWGREP_BASE_URL="$HWGREP_BASE_URL" \
-    DEBUG_HTML="$DEBUG_HTML" \
     VERBOSE="$VERBOSE" \
       "$HW_DEVICES_SCRIPT" \
         --probe "$PROBE_ID"
   fi
 
-
   if [ "$AVAILABLE_LOGS" -eq 1 ]; then
     HWGREP_BASE_URL="$HWGREP_BASE_URL" \
-    DEBUG_HTML="$DEBUG_HTML" \
     VERBOSE="$VERBOSE" \
       "$HW_LOGS_SCRIPT" \
         --probe "$PROBE_ID"
@@ -220,7 +211,6 @@ if [ -n "$FILTER_URL" ] && printf '%s\n' "$FILTER_URL" | grep -q 'probe='; then
     hw_fetch_page "$log_url" "" \
       | hw_html_to_text
   fi
-
 
   echo
   exit 0
@@ -254,12 +244,11 @@ echo "Using computers URL:"
 echo "  $FILTER_URL"
 echo
 
-if [ "$DRY_RUN" -eq 1 ]; then
-  echo "Dry-run mode: will list computer IDs and probe IDs only"
+if [ "$LIST_ONLY" -eq 1 ]; then
+  echo "List-only mode: will list computer URLs and probe IDs only"
 fi
 
 computers_html_dbg=""
-[ "$DEBUG_HTML" -eq 1 ] && computers_html_dbg="/tmp/hwgrep.computers.html"
 
 COMPUTER_IDS=$(
   hw_fetch_page "$FILTER_URL" "$computers_html_dbg" \
@@ -270,9 +259,6 @@ COMPUTER_IDS=$(
 
 if [ -z "$COMPUTER_IDS" ]; then
   echo "No computer IDs found" >&2
-  if [ "$DEBUG_HTML" -eq 1 ] && [ -n "$computers_html_dbg" ]; then
-    echo "Saved HTML to $computers_html_dbg for inspection" >&2
-  fi
   exit 1
 fi
 
@@ -280,9 +266,11 @@ if [ "$MAX_COMPUTERS" -gt 0 ]; then
   COMPUTER_IDS=$(printf '%s\n' "$COMPUTER_IDS" | head -n "$MAX_COMPUTERS")
 fi
 
-echo "Found computers, showing up to $MAX_COMPUTERS:"
-echo "$COMPUTER_IDS" | sed 's/^/  computer=/'
-echo
+if [ "$LIST_ONLY" -eq 0 ]; then
+  echo "Found computers, showing up to $MAX_COMPUTERS:"
+  echo "$COMPUTER_IDS" | sed 's/^/  computer=/'
+  echo
+fi
 
 probe_count=0
 
@@ -290,11 +278,8 @@ echo "$COMPUTER_IDS" | while read -r COMPUTER_ID; do
   [ -n "$COMPUTER_ID" ] || continue
 
   comp_url="${HWGREP_BASE_URL}/?computer=${COMPUTER_ID}"
-  echo "Computer ID: ${COMPUTER_ID}"
-  echo "URL:        ${comp_url}"
 
   comp_html_dbg=""
-  [ "$DEBUG_HTML" -eq 1 ] && comp_html_dbg="/tmp/hwgrep.computer.${COMPUTER_ID}.html"
 
   PROBE_IDS=$(
     hw_fetch_page "$comp_url" "$comp_html_dbg" \
@@ -304,11 +289,25 @@ echo "$COMPUTER_IDS" | while read -r COMPUTER_ID; do
   )
 
   if [ -z "$PROBE_IDS" ]; then
-    echo "  No probes found for this computer"
+    if [ "$LIST_ONLY" -eq 0 ]; then
+      echo "Computer ID: ${COMPUTER_ID}"
+      echo "URL:        ${comp_url}"
+      echo "  No probes found for this computer"
+      echo
+    fi
+    continue
+  fi
+
+  if [ "$LIST_ONLY" -eq 1 ]; then
+    echo "URL:        ${comp_url}"
+    echo "  Probes:"
+    echo "$PROBE_IDS" | sed 's/^/    /'
     echo
     continue
   fi
 
+  echo "Computer ID: ${COMPUTER_ID}"
+  echo "URL:        ${comp_url}"
   echo "  Probes:"
   echo "$PROBE_IDS" | sed 's/^/    /'
   echo
@@ -324,14 +323,13 @@ echo "$COMPUTER_IDS" | while read -r COMPUTER_ID; do
 
     echo "Probe: ${PROBE_ID}"
 
-    if [ "$DRY_RUN" -eq 1 ] || [ "$SKIP_LOGS" -eq 1 ] && [ "$HOST_INFO" -eq 0 ] && [ "$LIST_DEVICES" -eq 0 ]; then
+    if [ "$SKIP_LOGS" -eq 1 ] && [ "$HOST_INFO" -eq 0 ] && [ "$LIST_DEVICES" -eq 0 ]; then
       echo
       continue
     fi
 
     if [ "$HOST_INFO" -eq 1 ]; then
       HWGREP_BASE_URL="$HWGREP_BASE_URL" \
-      DEBUG_HTML="$DEBUG_HTML" \
       VERBOSE="$VERBOSE" \
         "$HW_HOSTINFO_SCRIPT" \
           --probe "$PROBE_ID"
@@ -339,7 +337,6 @@ echo "$COMPUTER_IDS" | while read -r COMPUTER_ID; do
 
     if [ "$LIST_DEVICES" -eq 1 ]; then
       HWGREP_BASE_URL="$HWGREP_BASE_URL" \
-      DEBUG_HTML="$DEBUG_HTML" \
       VERBOSE="$VERBOSE" \
         "$HW_DEVICES_SCRIPT" \
           --probe "$PROBE_ID"
@@ -347,7 +344,6 @@ echo "$COMPUTER_IDS" | while read -r COMPUTER_ID; do
 
     if [ "$AVAILABLE_LOGS" -eq 1 ]; then
       HWGREP_BASE_URL="$HWGREP_BASE_URL" \
-      DEBUG_HTML="$DEBUG_HTML" \
       VERBOSE="$VERBOSE" \
         "$HW_LOGS_SCRIPT" \
           --probe "$PROBE_ID"
