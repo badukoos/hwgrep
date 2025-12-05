@@ -21,11 +21,11 @@ MAX_PROBES=0
 MAX_COMPUTERS=5
 VERBOSE=0
 LIST_ONLY=0
-HOST_INFO=0
+HOST_INFO=1
 LIST_DEVICES=0
 AVAILABLE_LOGS=0
 LOG_EXPLICIT=0
-SKIP_LOGS=0
+SKIP_LOGS=1
 
 usage() {
   cat <<EOF
@@ -91,6 +91,7 @@ while [ $# -gt 0 ]; do
     --log)
       LOG_NAME="${2:-}"
       LOG_EXPLICIT=1
+      SKIP_LOGS=0
       shift 2
       ;;
     --grep)
@@ -156,16 +157,6 @@ while [ $# -gt 0 ]; do
       ;;
   esac
 done
-
-if [ "$HOST_INFO" -eq 1 ] || [ "$LIST_DEVICES" -eq 1 ]; then
-  if [ "$AVAILABLE_LOGS" -eq 0 ] && [ "$LOG_EXPLICIT" -eq 0 ] && [ -z "$GREP_PATTERN" ]; then
-    SKIP_LOGS=1
-  fi
-fi
-
-if [ -z "$LOG_NAME" ] && [ "$SKIP_LOGS" -eq 0 ]; then
-  LOG_NAME="dmesg"
-fi
 
 if [ -n "$FILTER_URL" ] && printf '%s\n' "$FILTER_URL" | grep -q 'probe='; then
   PROBE_ID="$(
