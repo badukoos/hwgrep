@@ -10,11 +10,6 @@ usage() {
   cat <<EOF
 Usage:
   $(basename "$0") --probe PROBE_ID
-
-Environment:
-  HWGREP_BASE_URL   Base URL (default: https://linux-hardware.org)
-  DEBUG_HTML        If 1, save HTML to /tmp/hwgrep.logs.PROBE_ID.html
-  VERBOSE           If 1, extra debug output to stderr
 EOF
 }
 
