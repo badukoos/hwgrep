@@ -233,10 +233,12 @@ if [ -n "$FILTER_URL" ] && printf '%s\n' "$FILTER_URL" | grep -q 'probe='; then
   if [ -n "$GREP_PATTERN" ]; then
     hw_fetch_page "$log_url" "" \
       | hw_html_to_text \
-      | grep -Ei "$GREP_PATTERN" || echo "  no matches"
+      | grep -Ei "$GREP_PATTERN" \
+      | hw_color_logs || echo "  no matches"
   else
     hw_fetch_page "$log_url" "" \
-      | hw_html_to_text
+      | hw_html_to_text \
+      | hw_color_logs
   fi
 
   echo
@@ -433,10 +435,12 @@ printf '%s\n' "$COMPUTER_IDS" | while read -r COMPUTER_ID; do
     if [ -n "$GREP_PATTERN" ]; then
       hw_fetch_page "$log_url" "" \
         | hw_html_to_text \
-        | grep -Ei "$GREP_PATTERN" || echo "  no matches"
+        | grep -Ei "$GREP_PATTERN" \
+        | hw_color_logs || echo "  no matches"
     else
       hw_fetch_page "$log_url" "" \
-        | hw_html_to_text
+        | hw_html_to_text \
+        | hw_color_logs
     fi
 
     echo
