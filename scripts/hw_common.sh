@@ -125,8 +125,36 @@ hw_probe_text() {
   local probe_id="$1"
   local probe_url="${HWGREP_BASE_URL}/?probe=${probe_id}"
   local dbg=""
-  [ "$DEBUG_HTML" -eq 1 ] && dbg="/tmp/hwgrep.probe.${probe_id}.html"
+  if [ "$DEBUG_HTML" -eq 1 ]; then
+    dbg="/tmp/hwgrep.probe.${probe_id}.html"
+  fi
 
   hw_fetch_page "$probe_url" "$dbg" \
     | hw_html_to_text
+}
+
+hw_probe_system() {
+  local probe_id="${1:-}"
+
+  if [ -z "$probe_id" ]; then
+    printf 'hw_probe_system: missing probe_id\n' >&2
+    return 1
+  fi
+
+  hw_probe_text "$probe_id" \
+    | awk '
+        $0 ~ /^Host[[:space:]]*$/ { inhost = 1; next }
+        inhost && $0 ~ /^Devices[[:space:]]*\(/ { exit }
+        inhost {
+          gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
+          if ($0 == "" || $0 == "Host" || $0 == "Devices" || $0 == "Logs") next
+          if ($0 ~ /^System$/) {
+            if (getline) {
+              gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
+              print $0
+            }
+            exit
+          }
+        }
+      '
 }

@@ -14,6 +14,7 @@ TYPE=""
 VENDOR=""
 MODEL_LIKE=""
 YEAR=""
+OS_FAMILY=""
 LOG_NAME=""
 GREP_PATTERN=""
 SLEEP_SEC=1
@@ -37,9 +38,10 @@ Filters:
   --vendor VENDOR       Vendor name, e.g. Lenovo
   --model-like STR      Model substring, e.g. "ThinkPad E14 Gen 7"
   --year YEAR           Mfg. year filter e.g. --year 2025, default: all
+  --os-family NAME      OS filter e.g. "Fedora", "Ubuntu 24.04"
 
-  --filter-url URL      Full ?view=computers, ?computer= or ?probe= URL. If this
-                        is set, --type/--vendor/--model-like/--year are ignored
+  --filter-url URL      Full ?view=computers, ?computer= or ?probe= URL. If set
+                        --type/--vendor/--model-like/--year/--os-family are ignored
 
 Logs:
   --log NAME            Log to fetch
@@ -86,6 +88,10 @@ while [ $# -gt 0 ]; do
       ;;
     --year)
       YEAR="${2:-}"
+      shift 2
+      ;;
+    --os-family)
+      OS_FAMILY="${2:-}"
       shift 2
       ;;
     --log)
@@ -171,6 +177,22 @@ if [ -n "$FILTER_URL" ] && printf '%s\n' "$FILTER_URL" | grep -q 'probe='; then
     exit 1
   fi
 
+  if [ -n "$OS_FAMILY" ]; then
+    probe_system="$(hw_probe_system "$PROBE_ID" || true)"
+    if [ -z "$probe_system" ]; then
+      echo "Probe ${PROBE_ID} has no System field, skipping due to OS filter" >&2
+      exit 0
+    fi
+    case "$probe_system" in
+      *"$OS_FAMILY"*)
+        ;;
+      *)
+        echo "Probe ${PROBE_ID} System='${probe_system}' does not match OS filter '${OS_FAMILY}'" >&2
+        exit 0
+        ;;
+    esac
+  fi
+
   if [ "$LIST_ONLY" -eq 1 ]; then
     echo "URL:   ${HWGREP_BASE_URL}/?probe=${PROBE_ID}"
     exit 0
@@ -235,7 +257,13 @@ if [ -z "$FILTER_URL" ]; then
   enc_vendor=$(encode_spaces_as_plus "$VENDOR")
   enc_model_like=$(encode_spaces_as_plus "$MODEL_LIKE")
 
-  FILTER_URL="${HWGREP_BASE_URL}/?view=computers&type=${enc_type}&vendor=${enc_vendor}&model_like=${enc_model_like}"
+  os_filter=""
+  if [ -n "$OS_FAMILY" ]; then
+    enc_os_family=$(encode_spaces_as_plus "$OS_FAMILY")
+    os_filter="&f=os_name&v=${enc_os_family}"
+  fi
+
+  FILTER_URL="${HWGREP_BASE_URL}/?view=computers${os_filter}&type=${enc_type}&vendor=${enc_vendor}&model_like=${enc_model_like}"
 
   if [ "$YEAR" != "all" ] && [ "$YEAR" != "ALL" ]; then
     enc_year=$(printf '%s\n' "$YEAR" | sed 's/[^0-9]//g')
@@ -283,18 +311,16 @@ fi
 
 if [ "$LIST_ONLY" -eq 0 ] && [ "$used_listing" -eq 1 ]; then
   echo "Found computers, showing up to $MAX_COMPUTERS:"
-  echo "$COMPUTER_IDS" | sed 's/^/  computer=/'
+  printf '%s\n' "$COMPUTER_IDS" | sed 's/^/  computer=/'
   echo
 fi
 
 probe_count=0
 
-echo "$COMPUTER_IDS" | while read -r COMPUTER_ID; do
+printf '%s\n' "$COMPUTER_IDS" | while read -r COMPUTER_ID; do
   [ -n "$COMPUTER_ID" ] || continue
 
   comp_url="${HWGREP_BASE_URL}/?computer=${COMPUTER_ID}"
-
-  comp_html_dbg=""
 
   PROBE_IDS=$(
     hw_fetch_page "$comp_url" \
@@ -303,29 +329,48 @@ echo "$COMPUTER_IDS" | while read -r COMPUTER_ID; do
       | sort -u
   )
 
+  if [ -n "$OS_FAMILY" ]; then
+    filtered=""
+    while read -r pid; do
+      [ -n "$pid" ] || continue
+      psys="$(hw_probe_system "$pid" || true)"
+      [ -z "$psys" ] && continue
+      case "$psys" in
+        *"$OS_FAMILY"*)
+          filtered="${filtered}${pid}"$'\n'
+          ;;
+      esac
+    done <<< "$PROBE_IDS"
+    PROBE_IDS="$filtered"
+  fi
+
   if [ -z "$PROBE_IDS" ]; then
     if [ "$LIST_ONLY" -eq 0 ]; then
-      echo "URL:        ${comp_url}"
-      echo "  No probes found for this computer"
+      echo "URL: ${comp_url}"
+      if [ -n "$OS_FAMILY" ]; then
+        echo "  No probes found for this computer matching OS filter"
+      else
+        echo "  No probes found for this computer"
+      fi
       echo
     fi
     continue
   fi
 
   if [ "$LIST_ONLY" -eq 1 ]; then
-    echo "URL:        ${comp_url}"
+    echo "URL: ${comp_url}"
     echo "  Probes:"
-    echo "$PROBE_IDS" | sed 's/^/    /'
+    printf '%s\n' "$PROBE_IDS" | sed 's/^/    /'
     echo
     continue
   fi
 
-  echo "URL:        ${comp_url}"
+  echo "URL: ${comp_url}"
   echo "  Probes:"
-  echo "$PROBE_IDS" | sed 's/^/    /'
+  printf '%s\n' "$PROBE_IDS" | sed 's/^/    /'
   echo
 
-  echo "$PROBE_IDS" | while read -r PROBE_ID; do
+  printf '%s\n' "$PROBE_IDS" | while read -r PROBE_ID; do
     [ -n "$PROBE_ID" ] || continue
 
     probe_count=$((probe_count + 1))
