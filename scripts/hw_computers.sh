@@ -46,7 +46,7 @@ fi
 echo
 printf '%s\n' "$html" \
   | awk -f "$SCRIPT_DIR/hw_html_common.awk" \
-        -f "$SCRIPT_DIR/hw_computer_header.awk"
+        -f "$SCRIPT_DIR/hw_computer_summary.awk"
 
 echo
 printf '%s\n' "$html" \
