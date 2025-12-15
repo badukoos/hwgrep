@@ -57,7 +57,7 @@ function probes_print_header(desc) {
 
   print_cols("  ",
     CP_W_ID SEP CP_W_SRC SEP CP_W_SYS SEP CP_W_DATE,
-    "ID"    SEP "Source" SEP "System" SEP "Date",
+    "ID" SEP "Source" SEP "System" SEP "Date",
     0)
   print_cols("  ",
     CP_W_ID SEP CP_W_SRC SEP CP_W_SYS SEP CP_W_DATE,
@@ -71,7 +71,7 @@ function dev_print_header(include_notes) {
   if (include_notes) {
     print_cols("  ",
       DEV_W_BUS SEP DEV_W_ID SEP DEV_W_VENDOR SEP DEV_W_DEV SEP DEV_W_TYPE SEP DEV_W_DRV SEP DEV_W_STATUS SEP DEV_W_NOTES,
-      "BUS"     SEP "ID/Class" SEP "Vendor"   SEP "Device"  SEP "Type"     SEP "Driver"  SEP "Status"     SEP "Comments",
+      "BUS" SEP "ID/Class" SEP "Vendor" SEP "Device" SEP "Type" SEP "Driver" SEP "Status" SEP "Comments",
       0)
     print_cols("  ",
       DEV_W_BUS SEP DEV_W_ID SEP DEV_W_VENDOR SEP DEV_W_DEV SEP DEV_W_TYPE SEP DEV_W_DRV SEP DEV_W_STATUS SEP DEV_W_NOTES,
@@ -79,7 +79,7 @@ function dev_print_header(include_notes) {
   } else {
     print_cols("  ",
       DEV_W_BUS SEP DEV_W_ID SEP DEV_W_VENDOR SEP DEV_W_DEV SEP DEV_W_TYPE SEP DEV_W_DRV SEP DEV_W_STATUS,
-      "BUS"     SEP "ID/Class" SEP "Vendor"   SEP "Device"  SEP "Type"     SEP "Driver"  SEP "Status",
+      "BUS" SEP "ID/Class" SEP "Vendor" SEP "Device" SEP "Type" SEP "Driver" SEP "Status",
       0)
     print_cols("  ",
       DEV_W_BUS SEP DEV_W_ID SEP DEV_W_VENDOR SEP DEV_W_DEV SEP DEV_W_TYPE SEP DEV_W_DRV SEP DEV_W_STATUS,
@@ -95,7 +95,7 @@ function kd_print_header(desc) {
 
   print_cols("  ",
     KD_W_VER SEP KD_W_SRC SEP KD_W_CFG SEP KD_W_ID SEP KD_W_CLS,
-    "BUS"    SEP "ID/Class" SEP "Vendor" SEP "Device" SEP "Type",
+    "Version" SEP "Source" SEP "Config" SEP "ID" SEP "Class",
     0)
   print_cols("  ",
     KD_W_VER SEP KD_W_SRC SEP KD_W_CFG SEP KD_W_ID SEP KD_W_CLS,
@@ -110,7 +110,7 @@ function status_print_header(desc, include_notes) {
   if (include_notes) {
     print_cols("  ",
       ST_W_HWID SEP ST_W_TYPE SEP ST_W_VM SEP ST_W_PROBES SEP ST_W_SYS SEP ST_W_STATUS SEP ST_W_NOTES,
-      "HWid"    SEP "Type"    SEP "Vendor/Model" SEP "Probes" SEP "System" SEP "Status" SEP "Comments",
+      "HWid" SEP "Type" SEP "Vendor/Model" SEP "Probes" SEP "System" SEP "Status" SEP "Comments",
       0)
     print_cols("  ",
       ST_W_HWID SEP ST_W_TYPE SEP ST_W_VM SEP ST_W_PROBES SEP ST_W_SYS SEP ST_W_STATUS SEP ST_W_NOTES,
@@ -118,7 +118,7 @@ function status_print_header(desc, include_notes) {
   } else {
     print_cols("  ",
       ST_W_HWID SEP ST_W_TYPE SEP ST_W_VM SEP ST_W_PROBES SEP ST_W_SYS SEP ST_W_STATUS,
-      "HWid"    SEP "Type"    SEP "Vendor/Model" SEP "Probes" SEP "System" SEP "Status",
+      "HWid" SEP "Type" SEP "Vendor/Model" SEP "Probes" SEP "System" SEP "Status",
       0)
     print_cols("  ",
       ST_W_HWID SEP ST_W_TYPE SEP ST_W_VM SEP ST_W_PROBES SEP ST_W_SYS SEP ST_W_STATUS,
