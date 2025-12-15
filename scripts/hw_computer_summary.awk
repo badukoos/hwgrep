@@ -75,20 +75,18 @@ BEGIN {
 
 END {
   if (comp_title  == "" &&
-      comp_hwid   == "" && comp_type == "" &&
-      comp_vendor == "" && comp_model == "" && comp_year == "") {
+      comp_hwid   == "" &&
+      comp_type   == "" &&
+      comp_vendor == "" &&
+      comp_model  == "" &&
+      comp_year   == "") {
     exit
   }
 
-  if (comp_title != "") {
-    print comp_title
-  } else {
-    print "Computer"
-  }
-
-  if (comp_hwid   != "") printf("  %-6s: %s\n", "HWid",   comp_hwid)
-  if (comp_type   != "") printf("  %-6s: %s\n", "Type",   comp_type)
-  if (comp_vendor != "") printf("  %-6s: %s\n", "Vendor", comp_vendor)
-  if (comp_model  != "") printf("  %-6s: %s\n", "Model",  comp_model)
-  if (comp_year   != "") printf("  %-6s: %s\n", "Year",   comp_year)
+  if (comp_title  != "") printf("%s\n", comp_title)
+  if (comp_hwid   != "") printf("  %-7s: %s\n", "HWid",   comp_hwid)
+  if (comp_type   != "") printf("  %-7s: %s\n", "Type",   comp_type)
+  if (comp_vendor != "") printf("  %-7s: %s\n", "Vendor", comp_vendor)
+  if (comp_model  != "") printf("  %-7s: %s\n", "Model",  comp_model)
+  if (comp_year   != "") printf("  %-7s: %s\n", "Year",   comp_year)
 }
