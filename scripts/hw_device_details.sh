@@ -50,26 +50,31 @@ if [ -z "$html" ]; then
 fi
 
 echo
-printf '%s\n' "$html" |
-  awk -f "$SCRIPT_DIR/hw_html_common.awk" \
-      -f "$SCRIPT_DIR/hw_header_layout.awk" \
-      -f "$SCRIPT_DIR/hw_device_summary.awk"
+printf '%s\n' "$html" \
+  | awk -f "$SCRIPT_DIR/hw_text_common.awk" \
+        -f "$SCRIPT_DIR/hw_html_cells.awk" \
+        -f "$SCRIPT_DIR/hw_device_summary.awk"
 
 echo
-printf '%s\n' "$html" |
-  awk -f "$SCRIPT_DIR/hw_html_common.awk" \
-      -f "$SCRIPT_DIR/hw_header_layout.awk" \
-      -f "$SCRIPT_DIR/hw_device_kernel_drivers.awk"
+printf '%s\n' "$html" \
+  | awk -f "$SCRIPT_DIR/hw_text_common.awk" \
+        -f "$SCRIPT_DIR/hw_html_cells.awk" \
+        -f "$SCRIPT_DIR/hw_table_common.awk" \
+        -f "$SCRIPT_DIR/hw_header_layout.awk" \
+        -f "$SCRIPT_DIR/hw_device_kernel_drivers.awk"
 
 echo
-printf '%s\n' "$html" |
-  awk -f "$SCRIPT_DIR/hw_html_common.awk" \
-      -f "$SCRIPT_DIR/hw_header_layout.awk" \
-      -f "$SCRIPT_DIR/hw_device_other_drivers.awk"
+printf '%s\n' "$html" \
+  | awk -f "$SCRIPT_DIR/hw_text_common.awk" \
+        -f "$SCRIPT_DIR/hw_html_cells.awk" \
+        -f "$SCRIPT_DIR/hw_device_other_drivers.awk"
 
 echo
-printf '%s\n' "$html" |
-  awk -v enable_color="$COLOR_FLAG" \
-      -f "$SCRIPT_DIR/hw_html_common.awk" \
-      -f "$SCRIPT_DIR/hw_header_layout.awk" \
-      -f "$SCRIPT_DIR/hw_device_status.awk"
+printf '%s\n' "$html" \
+  | awk -v enable_color="$COLOR_FLAG" \
+        -f "$SCRIPT_DIR/hw_text_common.awk" \
+        -f "$SCRIPT_DIR/hw_html_cells.awk" \
+        -f "$SCRIPT_DIR/hw_table_common.awk" \
+        -f "$SCRIPT_DIR/hw_status_common.awk" \
+        -f "$SCRIPT_DIR/hw_header_layout.awk" \
+        -f "$SCRIPT_DIR/hw_device_status.awk"

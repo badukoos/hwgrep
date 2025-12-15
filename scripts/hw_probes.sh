@@ -51,16 +51,21 @@ fi
 
 echo
 printf '%s\n' "$html" \
-  | awk -f "$SCRIPT_DIR/hw_html_common.awk" \
+  | awk -f "$SCRIPT_DIR/hw_text_common.awk" \
+        -f "$SCRIPT_DIR/hw_html_cells.awk" \
         -f "$SCRIPT_DIR/hw_probe_host.awk"
 
 echo
 printf '%s\n' "$html" \
   | awk -v enable_color="$COLOR_FLAG" \
-        -f "$SCRIPT_DIR/hw_html_common.awk" \
+        -f "$SCRIPT_DIR/hw_text_common.awk" \
+        -f "$SCRIPT_DIR/hw_html_cells.awk" \
+        -f "$SCRIPT_DIR/hw_table_common.awk" \
+        -f "$SCRIPT_DIR/hw_status_common.awk" \
         -f "$SCRIPT_DIR/hw_header_layout.awk" \
         -f "$SCRIPT_DIR/hw_probe_devices.awk"
 
 echo
 hw_probe_text "$PROBE_ID" \
-  | awk -f "$SCRIPT_DIR/hw_probe_logs.awk"
+  | awk -f "$SCRIPT_DIR/hw_text_common.awk" \
+        -f "$SCRIPT_DIR/hw_probe_logs.awk"
