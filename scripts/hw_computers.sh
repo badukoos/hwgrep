@@ -25,7 +25,7 @@ while [ $# -gt 0 ]; do
       ;;
     *)
       echo "Unknown argument: $1" >&2
-      usage
+      usage >&2
       exit 1
       ;;
   esac
@@ -45,11 +45,14 @@ fi
 
 echo
 printf '%s\n' "$html" \
-  | awk -f "$SCRIPT_DIR/hw_html_common.awk" \
+  | awk -f "$SCRIPT_DIR/hw_text_common.awk" \
+        -f "$SCRIPT_DIR/hw_html_cells.awk" \
         -f "$SCRIPT_DIR/hw_computer_summary.awk"
 
 echo
 printf '%s\n' "$html" \
-  | awk -f "$SCRIPT_DIR/hw_html_common.awk" \
+  | awk -f "$SCRIPT_DIR/hw_text_common.awk" \
+        -f "$SCRIPT_DIR/hw_html_cells.awk" \
+        -f "$SCRIPT_DIR/hw_table_common.awk" \
         -f "$SCRIPT_DIR/hw_header_layout.awk" \
         -f "$SCRIPT_DIR/hw_computer_probes.awk"
