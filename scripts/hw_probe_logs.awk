@@ -1,8 +1,3 @@
-function trim(s) {
-  gsub(/^[[:space:]]+|[[:space:]]+$/, "", s)
-  return s
-}
-
 function append_log(cat, entry, t) {
   t = trim(entry)
   if (t == "") return
