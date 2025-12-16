@@ -16,11 +16,36 @@ hw_logv() {
   fi
 }
 
+hw_dbg_enabled() {
+  [ "${DEBUG_HTML:-0}" -eq 1 ]
+}
+
+hw_clean_name() {
+  local s="${1:-}"
+  s="${s//[^A-Za-z0-9._-]/_}"
+  printf '%s' "$s"
+}
+
+hw_dbg_file() {
+  local kind="${1:-page}"
+  local id="${2:-}"
+  if ! hw_dbg_enabled; then
+    return 0
+  fi
+
+  if [ -z "$id" ]; then
+    printf '/tmp/hwgrep.%s.html' "$kind"
+    return 0
+  fi
+
+  printf '/tmp/hwgrep.%s.%s.html' "$kind" "$(hw_clean_name "$id")"
+}
+
 hw_cache_init() {
   mkdir -p "${HW_CACHE_DIR}"
 }
 
-hw_cache_key_for_url() {
+hw_cache_key() {
   local url="${1:-}"
   if [ -z "$url" ]; then
     return 1
@@ -28,7 +53,6 @@ hw_cache_key_for_url() {
 
   local hash
   hash="$(printf '%s' "$url" | sha256sum | awk '{print $1}')"
-
   printf '%s/page-%s.html' "$HW_CACHE_DIR" "$hash"
 }
 
@@ -37,11 +61,22 @@ hw_cache_put() {
   local tmp_file="$2"
 
   local cache_file
-  cache_file="$(hw_cache_key_for_url "$url")"
+  cache_file="$(hw_cache_key "$url")"
 
   mkdir -p "$(dirname "$cache_file")"
   mv "$tmp_file" "$cache_file"
   hw_logv "cache store: $url -> $cache_file"
+}
+
+hw_dump_file() {
+  local src="$1"
+  local dbg="${2:-}"
+
+  if hw_dbg_enabled && [ -n "$dbg" ]; then
+    tee "$dbg" <"$src"
+  else
+    cat "$src"
+  fi
 }
 
 hw_fetch_page() {
@@ -51,16 +86,12 @@ hw_fetch_page() {
   hw_cache_init
 
   local cache_file
-  cache_file="$(hw_cache_key_for_url "$url")"
+  cache_file="$(hw_cache_key "$url")"
 
   if [ "${HW_CACHE_DISABLE:-0}" -eq 0 ] && [ "${HW_CACHE_REFRESH:-0}" -eq 0 ]; then
     if [ -f "$cache_file" ]; then
       hw_logv "cache hit: $url -> $cache_file"
-      if [ "$DEBUG_HTML" -eq 1 ] && [ -n "$dbg" ]; then
-        tee "$dbg" <"$cache_file"
-      else
-        cat "$cache_file"
-      fi
+      hw_dump_file "$cache_file" "$dbg"
       return 0
     fi
   fi
@@ -82,12 +113,8 @@ hw_fetch_page() {
 
     if [ "${HW_CACHE_DISABLE:-0}" -eq 0 ] && [ -f "$cache_file" ]; then
       hw_logv "using stale cache for $url"
-      if [ "$DEBUG_HTML" -eq 1 ] && [ -n "$dbg" ]; then
-        tee "$dbg" <"$cache_file"
-      else
-        cat "$cache_file"
-      fi
       rm -f "$tmp"
+      hw_dump_file "$cache_file" "$dbg"
       return 0
     fi
 
@@ -97,105 +124,63 @@ hw_fetch_page() {
 
   if [ "${HW_CACHE_DISABLE:-0}" -eq 0 ]; then
     hw_cache_put "$url" "$tmp"
-    if [ "$DEBUG_HTML" -eq 1 ] && [ -n "$dbg" ]; then
-      tee "$dbg" <"$cache_file"
-    else
-      cat "$cache_file"
-    fi
+    hw_dump_file "$cache_file" "$dbg"
   else
-    if [ "$DEBUG_HTML" -eq 1 ] && [ -n "$dbg" ]; then
-      tee "$dbg" <"$tmp"
-    else
-      cat "$tmp"
-    fi
+    hw_dump_file "$tmp" "$dbg"
     rm -f "$tmp"
   fi
 }
 
 hw_html_to_text() {
-  sed '/<script/,/<\/script>/d; /<style/,/<\/style>/d' \
-  | sed -E 's/<[Bb][Rr][[:space:]]*\/?>/\n/g' \
-  | sed 's/&nbsp;/ /g' \
-  | sed -E 's/&[A-Za-z0-9#]+;//g' \
-  | sed 's/<[^>]*>//g' \
-  | sed '/^[[:space:]]*$/d'
+  awk -f "${SCRIPT_DIR}/hw_html_text.awk"
+}
+
+hw_probe_html() {
+  local probe_id="$1"
+  local url="${HWGREP_BASE_URL}/?probe=${probe_id}"
+  hw_fetch_page "$url" "$(hw_dbg_file probe "$probe_id")"
 }
 
 hw_probe_text() {
   local probe_id="$1"
-  local probe_url="${HWGREP_BASE_URL}/?probe=${probe_id}"
-  local dbg=""
-  if [ "$DEBUG_HTML" -eq 1 ]; then
-    dbg="/tmp/hwgrep.probe.${probe_id}.html"
-  fi
-
-  hw_fetch_page "$probe_url" "$dbg" \
-    | hw_html_to_text
+  hw_probe_html "$probe_id" | hw_html_to_text
 }
 
 hw_probe_system() {
-  local probe_id="${1:-}"
-
-  if [ -z "$probe_id" ]; then
-    printf 'hw_probe_system: missing probe_id\n' >&2
-    return 1
-  fi
-
-  hw_probe_text "$probe_id" \
-    | awk '
-        $0 ~ /^Host[[:space:]]*$/ { inhost = 1; next }
-        inhost && $0 ~ /^Devices[[:space:]]*\(/ { exit }
-        inhost {
-          gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
-          if ($0 == "" || $0 == "Host" || $0 == "Devices" || $0 == "Logs") next
-          if ($0 ~ /^System$/) {
-            if (getline) {
-              gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
-              print $0
-            }
-            exit
-          }
-        }
-      '
+  local probe_id="${1:?probe id required}"
+  hw_probe_text "$probe_id" | awk -f "${SCRIPT_DIR}/hw_probe_system.awk"
 }
 
 hw_color_logs() {
   if [ -n "${NO_COLOR:-}" ]; then
     cat
-    return
+    return 0
   fi
+  awk -f "${SCRIPT_DIR}/hw_color_logs.awk"
+}
 
-  awk '
-    BEGIN {
-      red = "\033[31m";
-      yellow = "\033[33m";
-      reset = "\033[0m";
-    }
-    function has_word(re, l) {
-      return (l ~ ("(^|[[:space:][:punct:]])" re "([[:space:][:punct:]]|$)"))
-    }
-    function is_error(l) {
-      if (has_word("error(s)?", l)) return 1
-      if (has_word("fail(ed|ure)?", l)) return 1
-      if (has_word("fault(s)?", l)) return 1
-      if (l ~ /timed out/) return 1
-      if (has_word("timeout(s)?", l)) return 1
-      if (l ~ /i\/o error/) return 1
-      if (has_word("corrupt(ion)?", l)) return 1
-      if (has_word("panic", l)) return 1
-      if (has_word("oops", l)) return 1
-      if (has_word("segfault", l)) return 1
-      return 0
-    }
-    function is_warn(l) {
-      if (l ~ /warning:/) return 1
-      return 0
-    }
-    {
-      l = tolower($0)
-      if (is_error(l)) print red $0 reset
-      else if (is_warn(l)) print yellow $0 reset
-      else print $0
-    }
-  '
+hw_device_html() {
+  local dev_id="$1"
+  local dev_query="$dev_id"
+
+  case "$dev_query" in
+    *:*) ;;
+    *) dev_query="pci:${dev_query}" ;;
+  esac
+
+  local encoded="${dev_query//:/%3A}"
+  local url="${HWGREP_BASE_URL}/?id=${encoded}"
+
+  hw_fetch_page "$url" "$(hw_dbg_file device "$encoded")"
+}
+
+hw_device_text() {
+  local dev_id="$1"
+  hw_device_html "$dev_id" | hw_html_to_text
+}
+
+hw_computer_html() {
+  local computer_id="$1"
+  local url="${HWGREP_BASE_URL}/?computer=${computer_id}"
+  hw_fetch_page "$url" "$(hw_dbg_file computer "$computer_id")"
 }
