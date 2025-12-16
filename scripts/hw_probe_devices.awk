@@ -1,29 +1,3 @@
-function pick_status_color(status, enable_color, color_start) {
-  if (enable_color != 1) return ""
-
-  if      (status == "failed")   color_start = "\033[31m"
-  else if (status == "works")    color_start = "\033[32m"
-  else if (status == "malfunc")  color_start = "\033[33m"
-  else if (status == "fixed")    color_start = "\033[36m"
-  else if (status == "limited")  color_start = "\033[38;2;110;95;29m"
-  else                           color_start = ""
-
-  return color_start
-}
-
-function is_effective_none(s, t) {
-  t = tolower(trim(s))
-  return (t == "" || t == "<none>" || t == "none")
-}
-
-function clean_field(s) {
-  gsub(/\r/, "", s)
-  gsub(/\n/, " ", s)
-  gsub(/\t/, " ", s)
-  gsub(/[[:space:]]+/, " ", s)
-  return trim(s)
-}
-
 function print_device_row(bus, idcls, vendor, device, type, driver, status, note, include_notes,
                           nb, ni, nv, nd, nt, ndv, ns, nn, max_lines, i,
                           col_bus, col_id, col_vendor, col_dev, col_type, col_drv,
@@ -140,19 +114,8 @@ function handle_row(n, bus, idcls, vendor, device, type, driver,
   if (type   == "") type   = "<none>"
   if (driver == "") driver = "<none>"
 
-  if (status_raw != "") {
-    if (match(status_raw, /(works|detected|fixed|limited|malfunc|failed|disabled|unknown|n\/a)\b/)) {
-      status = substr(status_raw, RSTART, RLENGTH)
-      rest   = trim(substr(status_raw, RSTART + RLENGTH + 1))
-      if (note == "" && rest != "")
-        note = rest
-    } else {
-      status = status_raw
-    }
-  }
-
-  if (status == "") status = "<none>"
-  if (note   == "") note   = "<none>"
+  status = parse_status(status_raw, note, note)
+  note   = ps_note
 
   nrows++
   rows_bus[nrows]    = bus
@@ -164,7 +127,7 @@ function handle_row(n, bus, idcls, vendor, device, type, driver,
   rows_status[nrows] = status
   rows_note[nrows]   = note
 
-  if (!is_effective_none(note))
+  if (!is_none(note))
     has_notes = 1
 
   for (i = 1; i <= n; i++) delete cells[i]
