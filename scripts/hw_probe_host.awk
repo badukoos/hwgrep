@@ -61,7 +61,7 @@ BEGIN {
       in_tr = 0
       row = ""
     }
-    in_table  = 0
+    in_table = 0
     in_host_h2 = 0
     next
   }
