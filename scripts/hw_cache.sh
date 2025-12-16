@@ -25,7 +25,7 @@ case "$cmd" in
       exit 1
     fi
     url="${HWGREP_BASE_URL}/?probe=${probe}"
-    hw_cache_key_for_url "$url"
+    hw_cache_key "$url"
     ;;
 
   prime)
