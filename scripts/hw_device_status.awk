@@ -1,30 +1,3 @@
-function pick_status_color(status, enable_color, color_start) {
-  if (enable_color != 1) return ""
-
-  if      (status == "failed")   color_start = "\033[31m"
-  else if (status == "works")    color_start = "\033[32m"
-  else if (status == "malfunc")  color_start = "\033[33m"
-  else if (status == "fixed")    color_start = "\033[36m"
-  else if (status == "limited")  color_start = "\033[38;2;110;95;29m"
-  else                           color_start = ""
-
-  return color_start
-}
-
-function is_effective_none(s, t) {
-  t = tolower(trim(s))
-  return (t == "" || t == "<none>" || t == "none")
-}
-
-function clean_field(s) {
-  gsub(/\r/, " ", s)
-  gsub(/\n/, " ", s)
-  gsub(/\t/, " ", s)
-  s = trim(s)
-  gsub(/[[:space:]]+/, " ", s)
-  return s
-}
-
 function print_status_row(hwid, type, vm, probes, sys, status, note, include_notes,
                           nh, nt, nv, np, ns, nst, nn, max_lines, i,
                           col_hwid, col_type, col_vm, col_probes, col_sys, col_status,
@@ -133,19 +106,8 @@ function handle_row(n, hwid, type, vm, probes, sys,
   if (probes == "") probes = "<none>"
   if (sys    == "") sys    = "<none>"
 
-  if (status_raw != "") {
-    if (match(status_raw, /(works|detected|fixed|limited|malfunc|failed|disabled|unknown|n\/a)\b/)) {
-      status = substr(status_raw, RSTART, RLENGTH)
-      rest   = trim(substr(status_raw, RSTART + RLENGTH + 1))
-      if (note == "" && rest != "")
-        note = rest
-    } else {
-      status = status_raw
-    }
-  }
-
-  if (status == "") status = "<none>"
-  if (note   == "") note   = "<none>"
+  status = parse_status(status_raw, note, note)
+  note   = ps_note
 
   nrows++
   rows_hwid[nrows]   = hwid
@@ -156,7 +118,7 @@ function handle_row(n, hwid, type, vm, probes, sys,
   rows_status[nrows] = status
   rows_note[nrows]   = note
 
-  if (!is_effective_none(note))
+  if (!is_none(note))
     has_notes = 1
 
   for (i = 1; i <= n; i++) delete cells[i]
