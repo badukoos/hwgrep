@@ -70,9 +70,9 @@ Once you have a computer ID and a probe ID, you can dig into the probe itself.
 ./main.sh --probe-id 2044f52e97
 ```
 
-This will spit out
+This will print
 
-* Host/System info
+* System info
 * All detected devices
 * All logs uploaded for that probe
 
@@ -295,11 +295,6 @@ Example:
 ./main.sh --type notebook --vendor Lenovo --model-like "ThinkPad" --mfg-year 2025 --bsd
 ```
 ---
-
-## What's the deal with the name?
-
-This repo started as a log-grepping experiment.
-`hwgrep` stuck around longer than expected, so here we are.
 
 ## License
 
