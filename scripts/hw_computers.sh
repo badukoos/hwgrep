@@ -1,21 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-. "${SCRIPT_DIR}/hw_common.sh"
+. "$(dirname "${BASH_SOURCE[0]}")/hw_init_env.sh"
+hw_init_env
+. "${SCRIPTS_DIR}/hw_common.sh"
 
 COMPUTER_ID=""
 
 usage() {
   cat <<EOF
 Usage:
-  $(basename "$0") --computer <computer-id>
+  $(basename "$0") --computer-id <computer-id>
 EOF
 }
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --computer)
+    --computer-id)
       COMPUTER_ID="${2:-}"
       shift 2
       ;;
@@ -32,27 +33,24 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$COMPUTER_ID" ]; then
-  echo "ERROR: --computer is required" >&2
+  echo "ERROR: --computer-id is required" >&2
   usage >&2
   exit 1
 fi
 
-html="$(hw_computer_html "$COMPUTER_ID" || true)"
+tmp_html="$(mktemp)"
+trap 'rm -f "$tmp_html"' EXIT
 
-if [ -z "$html" ]; then
+hw_computer_html "$COMPUTER_ID" >"$tmp_html" || true
+
+if [ ! -s "$tmp_html" ]; then
   echo "WARNING: no HTML fetched for computer $COMPUTER_ID" >&2
 fi
 
 echo
-printf '%s\n' "$html" \
-  | awk -f "$SCRIPT_DIR/hw_text_common.awk" \
-        -f "$SCRIPT_DIR/hw_html_cells.awk" \
-        -f "$SCRIPT_DIR/hw_computer_summary.awk"
-
-echo
-printf '%s\n' "$html" \
-  | awk -f "$SCRIPT_DIR/hw_text_common.awk" \
-        -f "$SCRIPT_DIR/hw_html_cells.awk" \
-        -f "$SCRIPT_DIR/hw_table_common.awk" \
-        -f "$SCRIPT_DIR/hw_header_layout.awk" \
-        -f "$SCRIPT_DIR/hw_computer_probes.awk"
+awk -v COMPUTER_ID="$COMPUTER_ID" \
+    -f "$LIB_DIR/shared/hw_common.awk" \
+    -f "$LIB_DIR/computer/hw_computer_info.awk" \
+    -f "$LIB_DIR/computer/hw_computer_probes.awk" \
+    -f "$LIB_DIR/computer/hw_computer_render.awk" \
+    <"$tmp_html"
