@@ -1,5 +1,30 @@
-function process_row(s, m, key, val) {
-  s = row
+function probe_host_init() {
+  if (ph_init) return
+  ph_init = 1
+  probe_host_reset()
+}
+
+function probe_host_reset() {
+  host_system   = ""
+  host_arch     = ""
+  host_kernel   = ""
+  host_vendor   = ""
+  host_model    = ""
+  host_year     = ""
+  host_hwid     = ""
+  host_type     = ""
+  host_de       = ""
+
+  ph_in_host_h2 = 0
+  ph_in_table   = 0
+  ph_in_tr      = 0
+  ph_row        = ""
+  ph_printed    = 0
+}
+
+function probe_host_handle_row(s, m, key, val) {
+  s = ph_row
+  if (s == "") return
 
   if (match(s, /<th[^>]*>([^<]*)<\/th>/, m)) {
     key = clean_inline(m[1])
@@ -24,65 +49,9 @@ function process_row(s, m, key, val) {
   else if (key == "DE"     && host_de     == "") host_de     = val
 }
 
-BEGIN {
-  host_system = ""
-  host_arch   = ""
-  host_kernel = ""
-  host_vendor = ""
-  host_model  = ""
-  host_year   = ""
-  host_hwid   = ""
-  host_type   = ""
-  host_de     = ""
+function probe_host_print() {
+  if (ph_printed) return
 
-  in_host_h2 = 0
-  in_table   = 0
-  in_tr      = 0
-  row        = ""
-}
-
-{
-  line = $0
-
-  if (line ~ /<h2[^>]*>Host<\/h2>/) {
-    in_host_h2 = 1
-    next
-  }
-
-  if (in_host_h2 && !in_table && line ~ /<table[^>]*>/) {
-    in_table = 1
-  }
-
-  if (!in_table) next
-
-  if (line ~ /<\/table>/) {
-    if (in_tr) {
-      process_row()
-      in_tr = 0
-      row = ""
-    }
-    in_table = 0
-    in_host_h2 = 0
-    next
-  }
-
-  if (line ~ /<tr[^>]*>/) {
-    in_tr = 1
-    row = ""
-  }
-
-  if (in_tr) {
-    row = row line "\n"
-  }
-
-  if (in_tr && line ~ /<\/tr>/) {
-    process_row()
-    in_tr = 0
-    row = ""
-  }
-}
-
-END {
   if (host_system == "" &&
       host_arch   == "" &&
       host_kernel == "" &&
@@ -92,10 +61,10 @@ END {
       host_hwid   == "" &&
       host_type   == "" &&
       host_de     == "") {
-    exit
+    return
   }
 
-  print "Host"
+  print "Host:"
   if (host_system != "") printf("  %-7s: %s\n", "System", host_system)
   if (host_arch   != "") printf("  %-7s: %s\n", "Arch",   host_arch)
   if (host_kernel != "") printf("  %-7s: %s\n", "Kernel", host_kernel)
@@ -105,4 +74,60 @@ END {
   if (host_hwid   != "") printf("  %-7s: %s\n", "HWid",   host_hwid)
   if (host_type   != "") printf("  %-7s: %s\n", "Type",   host_type)
   if (host_de     != "") printf("  %-7s: %s\n", "DE",     host_de)
+
+  ph_printed = 1
+  print ""
+}
+
+function probe_host_handle(line) {
+  probe_host_init()
+
+  if (ph_printed) return
+
+  if (ph_in_table && line ~ /<\/table>/) {
+    if (ph_in_tr) probe_host_handle_row()
+
+    ph_in_table   = 0
+    ph_in_host_h2 = 0
+    ph_in_tr      = 0
+    ph_row        = ""
+
+    probe_host_print()
+    return
+  }
+
+  if (!ph_in_host_h2) {
+    if (line ~ /<h2[^>]*>Host<\/h2>/) {
+      ph_in_host_h2 = 1
+    }
+    return
+  }
+
+  if (!ph_in_table) {
+    if (line ~ /<table[^>]*>/) {
+      ph_in_table = 1
+    }
+    return
+  }
+
+  if (line ~ /<tr[^>]*>/) {
+    ph_in_tr = 1
+    ph_row = ""
+  }
+
+  if (ph_in_tr) {
+    ph_row = ph_row line "\n"
+  }
+
+  if (ph_in_tr && line ~ /<\/tr>/) {
+    probe_host_handle_row()
+    ph_in_tr = 0
+    ph_row = ""
+  }
+}
+
+function probe_host_flush() {
+  if (ph_in_tr) probe_host_handle_row()
+  probe_host_print()
+  probe_host_reset()
 }

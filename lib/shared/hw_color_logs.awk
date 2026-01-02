@@ -3,6 +3,7 @@ BEGIN {
   yellow = "\033[33m"
   reset = "\033[0m"
 
+  if (enable_color == "") enable_color = 1
   if (enable_color == 0) force_no_color = 1
   if ("NO_COLOR" in ENVIRON && ENVIRON["NO_COLOR"] != "") force_no_color = 1
 }

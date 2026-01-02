@@ -14,22 +14,22 @@ BEGIN {
   current_cat = ""
   order_count = 0
 
-  known["Board"]      = 1
-  known["Boot"]       = 1
-  known["CPU"]        = 1
-  known["Drive"]      = 1
+  known["Board"] = 1
+  known["Boot"] = 1
+  known["CPU"] = 1
+  known["Drive"] = 1
   known["Filesystem"] = 1
-  known["Graphics"]   = 1
-  known["Input"]      = 1
-  known["Kernel"]     = 1
-  known["Modules"]    = 1
-  known["Network"]    = 1
-  known["PCI"]        = 1
-  known["Processes"]  = 1
-  known["Sound"]      = 1
-  known["System"]     = 1
-  known["USB"]        = 1
-  known["Wireless"]   = 1
+  known["Graphics"] = 1
+  known["Input"] = 1
+  known["Kernel"] = 1
+  known["Modules"] = 1
+  known["Network"] = 1
+  known["PCI"] = 1
+  known["Processes"] = 1
+  known["Sound"] = 1
+  known["System"] = 1
+  known["USB"] = 1
+  known["Wireless"] = 1
 }
 
 /^Logs[[:space:]]*\([0-9]+\)/ {
@@ -79,7 +79,7 @@ END {
     if (length(cat) > maxw) maxw = length(cat)
   }
 
-  print "Logs"
+  print "Available Logs:"
   for (i = 1; i <= order_count; i++) {
     cat = order[i]
     printf("  %-" maxw "s : %s\n", cat, cat_logs[cat])
